@@ -45,8 +45,8 @@ order by total_games
 -- from schools
 -- where schoolname = 'Vanderbilt University'
 
-select * from salaries
-where lgid = 'AL'
+-- select * from salaries
+-- where lgid = 'AL'
 
 select
        namefirst || '' || namelast as fullname,
@@ -66,6 +66,8 @@ group by
          namefirst,
 	     namelast
 order by total_salary desc;
+
+
 
 
 SELECT 
@@ -299,34 +301,27 @@ where awardid = 'TSN Manager of the Year'
 and lgid in ('NL', 'AL')
 group by full_name,yearid, lgid, name
 having count(Distinct lgid) = 2
-
-
-
-
-WITH mgr_awards AS (
-    SELECT 
-        a.playerid,
-        p.namefirst || ' ' || p.namelast AS full_name,
-        a.yearid,
-        t.lgid,
-        t.name AS team_name
-    FROM awardsmanagers AS a
-    INNER JOIN people AS p
-        USING(playerid)
-    INNER JOIN managers AS m
-        USING(playerid, yearid, lgid)
-    INNER JOIN teams AS t
-        USING(teamid, yearid, lgid)
-    WHERE a.awardid = 'TSN Manager of the Year'
-      AND t.lgid IN ('NL', 'AL')
-)
-SELECT 
-    full_name,
-    STRING_AGG(team_name || ' (' || lgid || ')', ', ' ORDER BY yearid) AS teams_won
-FROM mgr_awards
-GROUP BY playerid, full_name
-HAVING COUNT(DISTINCT lgid) = 2
 ORDER BY full_name;
+
+
+
+
+SELECT 
+    p.namefirst || ' ' || p.namelast AS full_name,
+    STRING_AGG(t.name || ' (' || t.lgid || ')', ', ' ORDER BY a.yearid) AS teams_won
+FROM awardsmanagers AS a
+INNER JOIN people AS p
+    USING(playerid)
+INNER JOIN managers AS m
+    USING(playerid, yearid, lgid)
+INNER JOIN teams AS t
+    USING(teamid, yearid, lgid)
+WHERE a.awardid = 'TSN Manager of the Year'
+  AND t.lgid IN ('NL', 'AL')
+GROUP BY p.playerid, p.namefirst, p.namelast
+HAVING COUNT(DISTINCT t.lgid) = 2
+ORDER BY full_name;
+
 
 
 
@@ -334,14 +329,138 @@ ORDER BY full_name;
 --Consider only players who have played in the league for at least 10 years, and who hit at least one home run in 2016.
 --Report the players' first and last names and the number of home runs they hit in 2016.
 
-select * 
+select playerid,
+       namefirst || ' ' || namelast as full_name,
+       max(r),
+	   count(distinct yearid) as years_played,
+	   lgid
 from batting
-where h = 'hit'
+join people
+using(playerid)
+where yearid >= 2016
+-- and lgid < 10
+group by playerid,
+         lgid,
+		 full_name
+ 
+
+------------------------------------------------------------------------------------
+
+SELECT 
+    p.playerid,
+	p.namefirst || ' ' || p.namelast AS full_name,
+	max(r) as max_runs,
+	lgid,
+    COUNT(DISTINCT b.yearid) AS years_played,
+    SUM(CASE WHEN b.yearid = 2016 THEN b.hr ELSE 0 END) AS home_runs_2016
+FROM people p
+JOIN batting b 
+    ON p.playerid = b.playerid
+GROUP BY p.playerid, full_name, lgid
+HAVING COUNT(DISTINCT b.yearid) >= 10
+   AND SUM(CASE WHEN b.yearid = 2016 THEN b.hr ELSE 0 END) >= 1
+ORDER BY home_runs_2016 DESC;
+
+----------------------------------------------------------------------------
+select yearid
+from batting
+where yearid = 2016
+
+
+-- SELECT 
+--       namefirst || ' ' || namelast AS full_name,
+--       yearid AS home_runs_2016
+-- FROM batting
+-- JOIN people AS p
+--     ON batting.playerid = p.playerid
+-- JOIN (
+--     SELECT playerid, MAX(hr) AS max_hr
+--     FROM batting
+--     GROUP BY playerid
+-- ) AS career_max
+--     ON batting.playerid = career_max.playerid
+--    AND batting.hr = career_max.max_hr
+-- JOIN (
+--     SELECT playerid
+--     FROM batting
+--     GROUP BY playerid
+--     HAVING COUNT(DISTINCT yearid) >= 10
+--        AND SUM(CASE WHEN yearid = 2016 THEN hr ELSE 0 END) >= 1
+-- ) AS qualified
+--     ON batting.playerid = qualified.playerid
+-- WHERE batting.yearid = 2016
+-- ORDER BY batting.hr DESC;
+
+
+
+
+SELECT 
+    p.namefirst || ' ' || p.namelast AS full_name,
+    b2016.hr AS home_runs_2016
+FROM batting AS b2016
+JOIN people AS p
+    ON b2016.playerid = p.playerid
+JOIN (
+    SELECT playerid, MAX(hr) AS max_hr
+    FROM batting
+    GROUP BY playerid
+) AS career_max
+    ON b2016.playerid = career_max.playerid
+   AND b2016.hr = career_max.max_hr
+JOIN (
+    SELECT playerid
+    FROM batting
+    GROUP BY playerid
+    HAVING COUNT(DISTINCT yearid) >= 10
+       AND SUM(CASE WHEN yearid = 2016 THEN hr ELSE 0 END) >= 1
+) AS qualified
+    ON b2016.playerid = qualified.playerid
+WHERE b2016.yearid = 2016
+ORDER BY b2016.hr DESC;
+
+
+
 
 
 -- **Open-ended questions**
 
--- 11. Is there any correlation between number of wins and team salary? Use data from 2000 and later to answer this question. As you do this analysis, keep in mind that salaries across the whole league tend to increase together, so you may want to look on a year-by-year basis.
+-- 11. Is there any correlation between number of wins and team salary? 
+-- Use data from 2000 and later to answer this question. 
+-- As you do this analysis, keep in mind that salaries across the whole league tend to increase together,
+-- so you may want to look on a year-by-year basis.
+
+select *
+from salaries
+
+select *
+from teams
+
+
+select
+     SUM(salary)/1000000 AS earn_salary,
+	  w as win,
+	  teams.yearid as years,
+	  teamid
+from teams
+inner join salaries
+using(teamid)
+WHERE salaries.yearid >= 2000
+group by win, years, teamid 
+order by years desc
+
+
+SELECT 
+    teams.yearid,
+    CORR(w, SUM(salary)) AS corr_wins_salary
+FROM teams 
+JOIN salaries 
+  ON teams.teamid = salaries.teamid
+ AND teams.yearid = salaries.yearid
+WHERE teams.yearid >= 2000
+GROUP BY yearid
+ORDER BY yearid;
+
+
 
 -- 12. In this question, you will explore the connection between number of wins and attendance.
 --   *  Does there appear to be any correlation between attendance at home games and number of wins? </li>
