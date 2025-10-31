@@ -69,7 +69,6 @@ order by total_salary desc;
 
 
 
-
 SELECT 
     namefirst,
     namelast,
@@ -99,16 +98,25 @@ ORDER BY total_salary DESC;
 SELECT 
     CASE 
         WHEN pos = 'OF' THEN 'Outfield'
-        WHEN pos IN ('SS', '1B', '2B') THEN 'Infield'
         WHEN pos IN ('P', 'C') THEN 'Battery'
-        ELSE 'No Group'
+        ELSE 'infield'
     END AS label_players,
-	count(*) as num_of_players,
+	SUM(po) AS total_putouts,
 	        yearid as year_2016
 FROM fielding
 where yearid = 2016
-group by fielding.pos,
-          yearid
+group by label_players, year_2016
+
+
+
+-- SELECT 
+-- CASE WHEN pos = 'OF' THEN 'Outfield'
+-- 	 WHEN pos IN ('P', 'C') THEN 'Battery'
+-- 	 ELSE 'Infield' END AS position,
+-- 	 SUM(po) AS total_putouts
+-- FROM fielding
+-- WHERE yearid = 2016
+-- GROUP BY position		 
 
    
 -- 5. Find the average number of strikeouts per game by decade since 1920.
@@ -237,19 +245,20 @@ top_win_ws AS (
      AND t.w = tw.max_wins
     WHERE t.wswin = 'Y'
 )
--- SELECT 
---     COUNT(*) AS years_top_team_won_ws,
---     2016 - 1970 + 1 AS total_years,
---     ROUND(100.0 * COUNT(*) / (2016 - 1970 + 1), 2) AS percent_top_team_won_ws
--- FROM top_win_ws;
 SELECT 
-	(SELECT COUNT(*)
-	 FROM top_wins_teams
-	 WHERE wswin = 'N'
-	) * 100.0 /
-	(SELECT COUNT(*)
-	 FROM most_win_teams
-	);
+  COUNT(*) AS years_top_team_won_ws,
+   2016 - 1970 + 1 AS total_years,
+    ROUND(100.0 * COUNT(*) / (2016 - 1970 + 1), 2) AS percent_top_team_won_ws FROM top_win_ws;
+
+	
+-- SELECT 
+-- 	(SELECT COUNT(*)
+-- 	 FROM top_wins_teams
+-- 	 WHERE wswin = 'N'
+-- 	) * 100.0 /
+-- 	(SELECT COUNT(*)
+-- 	 FROM most_win_teams
+-- 	);
 
 
 -- 8. Using the attendance figures from the homegames table, find the teams and parks which had the 
@@ -394,29 +403,29 @@ where yearid = 2016
 
 
 
-SELECT 
-    p.namefirst || ' ' || p.namelast AS full_name,
-    b2016.hr AS home_runs_2016
-FROM batting AS b2016
-JOIN people AS p
-    ON b2016.playerid = p.playerid
-JOIN (
-    SELECT playerid, MAX(hr) AS max_hr
-    FROM batting
-    GROUP BY playerid
-) AS career_max
-    ON b2016.playerid = career_max.playerid
-   AND b2016.hr = career_max.max_hr
-JOIN (
-    SELECT playerid
-    FROM batting
-    GROUP BY playerid
-    HAVING COUNT(DISTINCT yearid) >= 10
-       AND SUM(CASE WHEN yearid = 2016 THEN hr ELSE 0 END) >= 1
-) AS qualified
-    ON b2016.playerid = qualified.playerid
-WHERE b2016.yearid = 2016
-ORDER BY b2016.hr DESC;
+-- SELECT 
+--     p.namefirst || ' ' || p.namelast AS full_name,
+--     b2016.hr AS home_runs_2016
+-- FROM batting AS b2016
+-- JOIN people AS p
+--     ON b2016.playerid = p.playerid
+-- JOIN (
+--     SELECT playerid, MAX(hr) AS max_hr
+--     FROM batting
+--     GROUP BY playerid
+-- ) AS career_max
+--     ON b2016.playerid = career_max.playerid
+--    AND b2016.hr = career_max.max_hr
+-- JOIN (
+--     SELECT playerid
+--     FROM batting
+--     GROUP BY playerid
+--     HAVING COUNT(DISTINCT yearid) >= 10
+--        AND SUM(CASE WHEN yearid = 2016 THEN hr ELSE 0 END) >= 1
+-- ) AS qualified
+--     ON b2016.playerid = qualified.playerid
+-- WHERE b2016.yearid = 2016
+-- ORDER BY b2016.hr DESC;
 
 
 
@@ -438,15 +447,16 @@ from teams
 
 select
      SUM(salary)/1000000 AS earn_salary,
-	  w as win,
-	  teams.yearid as years,
+	  w as win_games,
+	  teams.yearid as years_played,
 	  teamid
 from teams
 inner join salaries
 using(teamid)
 WHERE salaries.yearid >= 2000
-group by win, years, teamid 
-order by years desc
+group by win_games, years_played, teamid 
+order by years_played desc
+limit 5
 
 
 SELECT 
