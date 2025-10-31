@@ -18,7 +18,7 @@ SELECT
     p.namefirst,
     p.namelast,
     p.height,
-    t.teamid AS team_name,
+    t.name AS team_name,
     SUM(g) AS total_games
 FROM people p
 left join appearances a 
@@ -48,31 +48,30 @@ order by total_games
 -- select * from salaries
 -- where lgid = 'AL'
 
-select
-       namefirst || '' || namelast as fullname,
-	   sum(salary)::numeric::money as total_salary
-from people
-left join salaries
-using (playerid)
-join collegeplaying
-using (playerid)
-join schools
-using(schoolid)
-join managers
-using(teamid)
-where schoolname ilike '%Vanderbilt University%'
-and salaries.lgid = 'AL'
-group by 
-         namefirst,
-	     namelast
-order by total_salary desc;
+-- select
+--        namefirst || '' || namelast as fullname,
+-- 	   sum(salary)::numeric::money as total_salary
+-- from people
+-- left join salaries
+-- using (playerid)
+-- join collegeplaying
+-- using (playerid)
+-- join schools
+-- using(schoolid)
+-- join managers
+-- using(teamid)
+-- where schoolname ilike '%Vanderbilt University%'
+-- and salaries.lgid = 'AL'
+-- group by 
+--          namefirst,
+-- 	     namelast
+-- order by total_salary desc;
 
 
 
 SELECT 
-    namefirst,
-    namelast,
-    SUM(salary)::numeric::money AS total_salary
+    namefirst || ' ' || namelast as full_name,
+    SUM(distinct salary)::numeric::money AS total_salary
 FROM people
 inner join salaries 
 using(playerid)
@@ -82,7 +81,7 @@ inner join schools
 using(schoolid)
 WHERE schoolname = 'Vanderbilt University'
 -- and lgid = 'NL'
-GROUP BY namefirst, namelast
+GROUP BY full_name
 ORDER BY total_salary DESC;
 
 
@@ -270,7 +269,7 @@ select * from homegames
 select * from parks
 
 
-SELECT 
+(SELECT 
 	  park_name,
 	  attendance,
       games,
@@ -284,8 +283,25 @@ GROUP BY park_name,
 		 games
 HAVING SUM(games) >= 10
 ORDER BY avg_attendance_per_game DESC
-LIMIT 5;
-
+LIMIT 5
+)
+union
+(SELECT 
+	  park_name,
+	  attendance,
+      games,
+      ROUND(SUM(attendance)::numeric / SUM(games), 0) AS avg_attendance_per_game
+FROM homegames
+JOIN parks
+USING (park)
+WHERE year = 2016
+GROUP BY park_name,
+	     attendance,
+		 games
+HAVING SUM(games) >= 10
+ORDER BY avg_attendance_per_game asc
+LIMIT 5
+)
 
 
 -- 9. Which managers have won the TSN Manager of the Year award in both the National League (NL)
